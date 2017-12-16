@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <title>Ma todolist</title>
+        <style>
+            a {text-decoration: none; color: black;}
+        </style>
+    </head>
+
+    <body>
+        <h1>Ma todolist</h1>
+
+        <ul>
+        <% todolist.forEach(function(todo, index) { %>
+            <li id="<%= index %>"><input type="button" item="<%= index %>" class="item" value="✘" /> <%= todo %></li>
+        <% }); %>
+            <section id="zone_todo">
+
+            </section>
+        </ul>
+
+
+
+        <form action="/" method="post" id="formulaire_todo">
+            <p>
+                <label for="newtodo">Que dois-je faire ?</label>
+                <input type="text" name="newtodo" id="newtodo" autofocus />
+                <input type="submit" />
+            </p>
+        </form>
+        <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+            var socket = io.connect('http://localhost:8080/');
+
+            // On demande le pseudo au visiteur...
+            var pseudo = prompt('Quel est votre pseudo ?');
+            // Et on l'envoie avec le signal "petit_nouveau" (pour le différencier)
+            socket.emit('petit_nouveau', pseudo);
+
+            // On affiche une boîte de dialogue quand le serveur nous envoie un "item" avec l'id de l'item à ajouter (pour avoir le même dans tous les clients de la todolist)
+            socket.on('newItem', function(item, itemId) {
+                insertTodoItem(item, itemId); // Affiche l'item aussi sur notre page
+            });
+
+            socket.on('deleteItem', function(item) {
+                //alert('Le serveur a un message pour vous : ' + message);
+                deleteItem(item); // Affiche le message aussi sur notre page
+            });
+
+            // Lorsqu'on envoie le formulaire, on transmet le message et on l'affiche sur la page
+            $('#formulaire_todo').submit(function () {
+                var newtodo = $('#newtodo').val();
+                socket.emit('newItem', newtodo); // Transmet la nouvelle tache pour envoyer aux autres
+
+                $('#newtodo').val('').focus(); // Vide la zone de saisie et remet le focus dessus
+                return false; // Permet de bloquer l'envoi "classique" du formulaire
+            });
+
+            // binding des events sur tous les éléments avec la classe "item"
+            $(".item").click(clickOnAnItem);
+
+            function clickOnAnItem() {
+                var index = $(this).attr("item");
+                deleteItem(index);
+                alert(index);
+                socket.emit('deleteItem', index);
+                $('#newtodo').val('').focus(); // remet le focus sur le texte pour saisir une nouvelle todo item
+            }
+
+
+            // Ajoute un item dans la todo list
+            function insertTodoItem(item, itemId) {
+                $('#zone_todo').append('<li id="' + itemId + '"><input type="button" item="' + itemId + '" class="item" value="✘" /> ' + item + '</li>');
+                $(".item").off("click");
+                $(".item").click(clickOnAnItem); // rebinding event => un peu cracra
+            }
+
+            // Supprime un élément de la TodoList dans la page
+            function deleteItem(item) {
+                $("#" + item).remove();
+            }
+
+
+        </script>
+    </body>
+</html>
